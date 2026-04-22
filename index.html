@@ -90,6 +90,13 @@
             background: #2a2a2a;
         }
 
+        .w-unit {
+            font-size: 0.45em;
+            vertical-align: top;
+            margin-top: 0.15em;
+            display: inline-block;
+        }
+
         .w-loading {
             font-size: 1.5vw;
             color: #444;
@@ -182,13 +189,13 @@
 
                 document.getElementById('weather').innerHTML = `
                     <div class="w-main">
-                        <div class="w-temp">${temp}°C</div>
+                        <div class="w-temp">${temp}°<span class="w-unit">C</span></div>
                         <div class="w-condition">${condition}</div>
                     </div>
                     <div class="w-divider"></div>
                     <div class="w-block">
                         <div class="w-label">High / Low</div>
-                        <div class="w-value">${high}°C / ${low}°C</div>
+                        <div class="w-value">${high}°<span class="w-unit">C</span> / ${low}°<span class="w-unit">C</span></div>
                     </div>
                     <div class="w-divider"></div>
                     <div class="w-block">
