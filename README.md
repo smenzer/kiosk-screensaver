@@ -46,15 +46,8 @@ Update these for a different location.
 
 ## Deployment
 
-Copy `index.html` to the LXC via Proxmox:
-
 ```bash
-# From proxmox-app
-pct exec 118 -- bash -c 'cat > /var/www/html/index.html' < index.html
+./deploy.sh
 ```
 
-Or SCP directly once SSH keys are set up on the container:
-
-```bash
-scp index.html root@192.168.10.33:/var/www/html/index.html
-```
+SCPs `index.html` to `root@kiosk-app.nj.menzer.org:/var/www/html/index.html`.
