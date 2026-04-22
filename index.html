@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #clock {
+            font-size: 22vw;
+            font-weight: 100;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        #date {
+            font-size: 3.2vw;
+            font-weight: 300;
+            color: #888;
+            margin-top: 1.5vw;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        #weather {
+            display: flex;
+            gap: 3.5vw;
+            margin-top: 4vw;
+            align-items: center;
+        }
+
+        .w-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4vw;
+        }
+
+        .w-temp {
+            font-size: 5.5vw;
+            font-weight: 200;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .w-condition {
+            font-size: 1.6vw;
+            color: #888;
+            letter-spacing: 0.05em;
+        }
+
+        .w-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5vw;
+        }
+
+        .w-label {
+            font-size: 1.1vw;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .w-value {
+            font-size: 2.8vw;
+            font-weight: 200;
+            color: #ccc;
+            line-height: 1;
+        }
+
+        .w-divider {
+            width: 1px;
+            height: 4.5vw;
+            background: #2a2a2a;
+        }
+
+        .w-loading {
+            font-size: 1.5vw;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock">--:--</div>
+    <div id="date">Loading...</div>
+    <div id="weather"><span class="w-loading">Loading weather…</span></div>
+
+    <script>
+        const LAT = 40.7598;
+        const LON = -74.4160;
+        const TIMEZONE = 'America/New_York';
+
+        const WMO = {
+            0:  'Clear',
+            1:  'Mostly Clear',  2: 'Partly Cloudy', 3: 'Overcast',
+            45: 'Foggy',        48: 'Icy Fog',
+            51: 'Light Drizzle', 53: 'Drizzle',      55: 'Heavy Drizzle',
+            61: 'Light Rain',   63: 'Rain',           65: 'Heavy Rain',
+            71: 'Light Snow',   73: 'Snow',           75: 'Heavy Snow',
+            77: 'Snow Grains',
+            80: 'Showers',      81: 'Showers',        82: 'Heavy Showers',
+            85: 'Snow Showers', 86: 'Heavy Snow Showers',
+            95: 'Thunderstorm', 96: 'Thunderstorm',   99: 'Thunderstorm'
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours() % 12 || 12;
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${h}:${m}`;
+
+            const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const MONTHS = ['January','February','March','April','May','June',
+                            'July','August','September','October','November','December'];
+            document.getElementById('date').textContent =
+                `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}`;
+        }
+
+        async function fetchWeather() {
+            try {
+                const url =
+                    `https://api.open-meteo.com/v1/forecast` +
+                    `?latitude=${LAT}&longitude=${LON}` +
+                    `&current=temperature_2m,weathercode` +
+                    `&daily=temperature_2m_max,temperature_2m_min` +
+                    `&hourly=precipitation_probability` +
+                    `&temperature_unit=fahrenheit` +
+                    `&timezone=${encodeURIComponent(TIMEZONE)}` +
+                    `&forecast_days=1`;
+
+                const res  = await fetch(url);
+                const data = await res.json();
+
+                const temp      = Math.round(data.current.temperature_2m);
+                const condition = WMO[data.current.weathercode] ?? 'Unknown';
+                const high      = Math.round(data.daily.temperature_2m_max[0]);
+                const low       = Math.round(data.daily.temperature_2m_min[0]);
+
+                const nowHour      = new Date().getHours();
+                const hourlyPrecip = data.hourly.precipitation_probability.slice(nowHour);
+                const precip       = hourlyPrecip.length ? Math.max(...hourlyPrecip) : 0;
+
+                document.getElementById('weather').innerHTML = `
+                    <div class="w-main">
+                        <div class="w-temp">${temp}°</div>
+                        <div class="w-condition">${condition}</div>
+                    </div>
+                    <div class="w-divider"></div>
+                    <div class="w-block">
+                        <div class="w-label">High / Low</div>
+                        <div class="w-value">${high}° / ${low}°</div>
+                    </div>
+                    <div class="w-divider"></div>
+                    <div class="w-block">
+                        <div class="w-label">Precip Today</div>
+                        <div class="w-value">${precip}%</div>
+                    </div>
+                `;
+            } catch {
+                document.getElementById('weather').innerHTML =
+                    '<span class="w-loading">Weather unavailable</span>';
+            }
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+        fetchWeather();
+        setInterval(fetchWeather, 10 * 60 * 1000);
+    </script>
+</body>
+</html>
