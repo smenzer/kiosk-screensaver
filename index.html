@@ -108,16 +108,31 @@
 
         const WMO = {
             0:  'Clear',
-            1:  'Mostly Clear',  2: 'Partly Cloudy', 3: 'Overcast',
+            1:  'Mostly Clear',  2: 'Partly Cloudy',      3: 'Overcast',
             45: 'Foggy',        48: 'Icy Fog',
-            51: 'Light Drizzle', 53: 'Drizzle',      55: 'Heavy Drizzle',
-            61: 'Light Rain',   63: 'Rain',           65: 'Heavy Rain',
-            71: 'Light Snow',   73: 'Snow',           75: 'Heavy Snow',
+            51: 'Light Drizzle', 53: 'Drizzle',           55: 'Heavy Drizzle',
+            56: 'Freezing Drizzle', 57: 'Freezing Drizzle',
+            61: 'Light Rain',   63: 'Rain',               65: 'Heavy Rain',
+            66: 'Freezing Rain', 67: 'Freezing Rain',
+            71: 'Light Snow',   73: 'Snow',               75: 'Heavy Snow',
             77: 'Snow Grains',
-            80: 'Showers',      81: 'Showers',        82: 'Heavy Showers',
+            80: 'Showers',      81: 'Showers',            82: 'Heavy Showers',
             85: 'Snow Showers', 86: 'Heavy Snow Showers',
-            95: 'Thunderstorm', 96: 'Thunderstorm',   99: 'Thunderstorm'
+            95: 'Thunderstorm', 96: 'Thunderstorm',       99: 'Thunderstorm'
         };
+
+        function precipType(code) {
+            if (code >= 95) return 'Thunderstorm';
+            if (code >= 85) return 'Snow';
+            if (code >= 80) return 'Rain';
+            if (code >= 77) return 'Snow';
+            if (code >= 71) return 'Snow';
+            if (code >= 66) return 'Freezing Rain';
+            if (code >= 61) return 'Rain';
+            if (code >= 56) return 'Freezing Drizzle';
+            if (code >= 51) return 'Drizzle';
+            return null;
+        }
 
         function updateClock() {
             const now = new Date();
@@ -139,8 +154,8 @@
                     `?latitude=${LAT}&longitude=${LON}` +
                     `&current=temperature_2m,weathercode` +
                     `&daily=temperature_2m_max,temperature_2m_min` +
-                    `&hourly=precipitation_probability` +
-                    `&temperature_unit=fahrenheit` +
+                    `&hourly=precipitation_probability,weathercode` +
+                    `&temperature_unit=celsius` +
                     `&timezone=${encodeURIComponent(TIMEZONE)}` +
                     `&forecast_days=1`;
 
@@ -152,24 +167,34 @@
                 const high      = Math.round(data.daily.temperature_2m_max[0]);
                 const low       = Math.round(data.daily.temperature_2m_min[0]);
 
-                const nowHour      = new Date().getHours();
-                const hourlyPrecip = data.hourly.precipitation_probability.slice(nowHour);
-                const precip       = hourlyPrecip.length ? Math.max(...hourlyPrecip) : 0;
+                const nowHour       = new Date().getHours();
+                const hourlyPrecip  = data.hourly.precipitation_probability.slice(nowHour);
+                const hourlyCodes   = data.hourly.weathercode.slice(nowHour);
+                const precip        = hourlyPrecip.length ? Math.max(...hourlyPrecip) : 0;
+
+                let precipCode = null;
+                for (let i = 0; i < hourlyCodes.length; i++) {
+                    if (hourlyCodes[i] >= 51 && hourlyPrecip[i] > 10) {
+                        if (precipCode === null || hourlyCodes[i] > precipCode) precipCode = hourlyCodes[i];
+                    }
+                }
+                const type = precipCode ? precipType(precipCode) : null;
 
                 document.getElementById('weather').innerHTML = `
                     <div class="w-main">
-                        <div class="w-temp">${temp}°</div>
+                        <div class="w-temp">${temp}°C</div>
                         <div class="w-condition">${condition}</div>
                     </div>
                     <div class="w-divider"></div>
                     <div class="w-block">
                         <div class="w-label">High / Low</div>
-                        <div class="w-value">${high}° / ${low}°</div>
+                        <div class="w-value">${high}°C / ${low}°C</div>
                     </div>
                     <div class="w-divider"></div>
                     <div class="w-block">
                         <div class="w-label">Precip Today</div>
                         <div class="w-value">${precip}%</div>
+                        ${type ? `<div class="w-condition">${type}</div>` : ''}
                     </div>
                 `;
             } catch {
