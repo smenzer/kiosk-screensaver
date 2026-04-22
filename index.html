@@ -201,7 +201,7 @@
                     <div class="w-block">
                         <div class="w-label">Precip Today</div>
                         <div class="w-value">${precip}%</div>
-                        ${type ? `<div class="w-condition">${type}</div>` : ''}
+                        <div class="w-condition">${type ?? 'None'}</div>
                     </div>
                 `;
             } catch {
