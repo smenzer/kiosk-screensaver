@@ -16,7 +16,7 @@ Fullscreen screensaver page for Home Assistant Fully Kiosk tablets. Shows the cu
 Point Fully Kiosk's screensaver URL to:
 
 ```
-http://kiosk.nj.menzer.org
+https://kiosk.nj.menzer.org
 ```
 
 ## Configuration
@@ -40,7 +40,7 @@ Update these for a different location.
 | **OS** | Debian 12 |
 | **Resources** | 1 core, 512 MB RAM, 4 GB disk |
 | **Web server** | nginx, serving from `/var/www/html/` |
-| **URL** | `http://kiosk.nj.menzer.org` |
+| **URL** | `https://kiosk.nj.menzer.org` |
 | **DNS** | OPNsense Unbound override: `kiosk.nj.menzer.org` → `192.168.50.50` (nginx proxy) |
 | **Proxy** | Nginx Proxy Manager host #24: `kiosk.nj.menzer.org` → `192.168.10.33:80` |
 
