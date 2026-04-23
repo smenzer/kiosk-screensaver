@@ -21,7 +21,7 @@ https://kiosk.nj.menzer.org
 
 ## Configuration
 
-Location is hardcoded at the top of `index.html`:
+Location is hardcoded at the top of `screensaver.html`:
 
 ```js
 const LAT = 40.7598;
@@ -50,4 +50,4 @@ Update these for a different location.
 ./deploy.sh
 ```
 
-SCPs `index.html` to `root@kiosk-app.nj.menzer.org:/var/www/html/index.html`.
+SCPs `screensaver.html` to `root@kiosk-app.nj.menzer.org:/var/www/html/screensaver.html`.
