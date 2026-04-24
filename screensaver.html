@@ -18,6 +18,27 @@
             align-items: center;
             overflow: hidden;
             user-select: none;
+            position: relative;
+        }
+
+        #content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4vw 6vw;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 1.5vw;
+        }
+
+        #sonos-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.6);
+            transform: scale(1.1);
+            transition: background-image 0.8s ease-in-out;
         }
 
         #clock {
@@ -106,9 +127,12 @@
     </style>
 </head>
 <body>
-    <div id="clock">--:--</div>
-    <div id="date">Loading...</div>
-    <div id="weather"><span class="w-loading">Loading weather…</span></div>
+    <div id="sonos-bg"></div>
+    <div id="content">
+        <div id="clock">--:--</div>
+        <div id="date">Loading...</div>
+        <div id="weather"><span class="w-loading">Loading weather…</span></div>
+    </div>
 
     <script>
         const LAT = 40.7598;
@@ -212,10 +236,42 @@
             }
         }
 
+        const SONOS_ROOMS = [
+            { entity: 'media_player.kitchen_sonos' },
+            { entity: 'media_player.living_room_sonos' },
+            { entity: 'media_player.backyard_sonos' },
+        ];
+
+        async function updateSonosBackground() {
+            for (const room of SONOS_ROOMS) {
+                try {
+                    const res = await fetch(`/ha/api/states/${room.entity}`, {
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    const data = await res.json();
+
+                    // Check if playing and has entity_picture
+                    const state = data.state;
+                    const picture = data.attributes?.entity_picture;
+
+                    if (state === 'playing' && picture) {
+                        const artUrl = picture.startsWith('http') ? picture : `/ha${picture}`;
+                        document.getElementById('sonos-bg').style.backgroundImage = `url('${artUrl}')`;
+                        return;
+                    }
+                } catch {}
+            }
+
+            // No room playing
+            document.getElementById('sonos-bg').style.backgroundImage = 'none';
+        }
+
         updateClock();
         setInterval(updateClock, 1000);
         fetchWeather();
         setInterval(fetchWeather, 10 * 60 * 1000);
+        updateSonosBackground();
+        setInterval(updateSonosBackground, 5000);
     </script>
 </body>
 </html>
