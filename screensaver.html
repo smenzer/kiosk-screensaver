@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kiosk</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -42,7 +43,7 @@
         }
 
         #clock {
-            font-size: 22vw;
+            font-size: 18vw;
             font-weight: 700;
             letter-spacing: -0.03em;
             line-height: 1;
@@ -59,65 +60,44 @@
 
         #weather {
             display: flex;
-            gap: 3.5vw;
+            flex-direction: column;
+            gap: 1vw;
             margin-top: 4vw;
             align-items: center;
         }
 
         .w-main {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            gap: 0.4vw;
+            gap: 1.5vw;
         }
 
         .w-temp {
-            font-size: 7vw;
+            font-size: 12vw;
             font-weight: 700;
             color: #fff;
             line-height: 1;
         }
 
         .w-condition {
-            font-size: 2.2vw;
+            font-size: 5vw;
             font-weight: 600;
-            color: #999;
+            color: #ddd;
             letter-spacing: 0.05em;
         }
 
-        .w-block {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5vw;
-        }
-
-        .w-label {
-            font-size: 1.5vw;
+        .w-summary {
+            font-size: 4vw;
             font-weight: 600;
+        }
+
+        .w-label-inline {
             color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
         }
 
-        .w-value {
-            font-size: 3.8vw;
-            font-weight: 700;
-            color: #ddd;
-            line-height: 1;
-        }
-
-        .w-divider {
-            width: 1px;
-            height: 4.5vw;
-            background: #2a2a2a;
-        }
-
-        .w-unit {
-            font-size: 0.45em;
-            vertical-align: top;
-            margin-top: 0.15em;
-            display: inline-block;
+        .w-val-inline {
+            color: #fff;
         }
 
         .w-loading {
@@ -135,37 +115,29 @@
     </div>
 
     <script>
-        const LAT = 40.7598;
-        const LON = -74.4160;
-        const TIMEZONE = 'America/New_York';
-
-        const WMO = {
-            0:  'Clear',
-            1:  'Mostly Clear',  2: 'Partly Cloudy',      3: 'Overcast',
-            45: 'Foggy',        48: 'Icy Fog',
-            51: 'Light Drizzle', 53: 'Drizzle',           55: 'Heavy Drizzle',
-            56: 'Freezing Drizzle', 57: 'Freezing Drizzle',
-            61: 'Light Rain',   63: 'Rain',               65: 'Heavy Rain',
-            66: 'Freezing Rain', 67: 'Freezing Rain',
-            71: 'Light Snow',   73: 'Snow',               75: 'Heavy Snow',
-            77: 'Snow Grains',
-            80: 'Showers',      81: 'Showers',            82: 'Heavy Showers',
-            85: 'Snow Showers', 86: 'Heavy Snow Showers',
-            95: 'Thunderstorm', 96: 'Thunderstorm',       99: 'Thunderstorm'
+        const PW = {
+            temp:      'sensor.pirateweather_temperature',
+            summary:   'sensor.pirateweather_summary',
+            high:      'sensor.pirateweather_daytime_high_temperature_0d',
+            low:       'sensor.pirateweather_overnight_low_temperature_0d',
+            precipPct: 'sensor.pirateweather_precip_probability_0d',
+            precipType:'sensor.pirateweather_precip_0d',
+            icon:      'sensor.pirateweather_icon',
         };
 
-        function precipType(code) {
-            if (code >= 95) return 'Thunderstorm';
-            if (code >= 85) return 'Snow';
-            if (code >= 80) return 'Rain';
-            if (code >= 77) return 'Snow';
-            if (code >= 71) return 'Snow';
-            if (code >= 66) return 'Freezing Rain';
-            if (code >= 61) return 'Rain';
-            if (code >= 56) return 'Freezing Drizzle';
-            if (code >= 51) return 'Drizzle';
-            return null;
-        }
+        const ICON_MDI = {
+            'clear-day':           'mdi-weather-sunny',
+            'clear-night':         'mdi-weather-night',
+            'partly-cloudy-day':   'mdi-weather-partly-cloudy',
+            'partly-cloudy-night': 'mdi-weather-night-partly-cloudy',
+            'cloudy':              'mdi-weather-cloudy',
+            'rain':                'mdi-weather-rainy',
+            'sleet':               'mdi-weather-snowy-rainy',
+            'snow':                'mdi-weather-snowy',
+            'wind':                'mdi-weather-windy',
+            'fog':                 'mdi-weather-fog',
+            'thunderstorm':        'mdi-weather-lightning',
+        };
 
         function updateClock() {
             const now = new Date();
@@ -180,57 +152,35 @@
                 `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}`;
         }
 
+        async function haState(entity) {
+            const res = await fetch(`/ha/api/states/${entity}`, { signal: AbortSignal.timeout(5000) });
+            return (await res.json()).state;
+        }
+
         async function fetchWeather() {
             try {
-                const url =
-                    `https://api.open-meteo.com/v1/forecast` +
-                    `?latitude=${LAT}&longitude=${LON}` +
-                    `&current=temperature_2m,weathercode` +
-                    `&daily=temperature_2m_max,temperature_2m_min` +
-                    `&hourly=precipitation_probability,weathercode` +
-                    `&temperature_unit=celsius` +
-                    `&timezone=${encodeURIComponent(TIMEZONE)}` +
-                    `&forecast_days=1`;
+                const [temp, condition, high, low, precipPct, precipType, iconCode] = await Promise.all(
+                    Object.values(PW).map(haState)
+                );
 
-                const res  = await fetch(url);
-                const data = await res.json();
-
-                const temp      = Math.round(data.current.temperature_2m);
-                const condition = WMO[data.current.weathercode] ?? 'Unknown';
-                const high      = Math.round(data.daily.temperature_2m_max[0]);
-                const low       = Math.round(data.daily.temperature_2m_min[0]);
-
-                const nowHour       = new Date().getHours();
-                const hourlyPrecip  = data.hourly.precipitation_probability.slice(nowHour);
-                const hourlyCodes   = data.hourly.weathercode.slice(nowHour);
-                const precip        = hourlyPrecip.length ? Math.max(...hourlyPrecip) : 0;
-
-                let precipCode = null;
-                for (let i = 0; i < hourlyCodes.length; i++) {
-                    if (hourlyCodes[i] >= 51 && hourlyPrecip[i] > 10) {
-                        if (precipCode === null || hourlyCodes[i] > precipCode) precipCode = hourlyCodes[i];
-                    }
-                }
-                const type = precipCode ? precipType(precipCode) : null;
+                const type = (precipType && precipType !== 'none')
+                    ? precipType.charAt(0).toUpperCase() + precipType.slice(1)
+                    : null;
+                const iconClass = ICON_MDI[iconCode] ?? 'mdi-weather-cloudy';
 
                 document.getElementById('weather').innerHTML = `
                     <div class="w-main">
-                        <div class="w-temp">${temp}°<span class="w-unit">C</span></div>
-                        <div class="w-condition">${condition}</div>
+                        <div class="w-temp">${Math.round(temp)}°</div>
+                        <div class="w-condition"><i class="mdi ${iconClass}"></i> ${condition}</div>
                     </div>
-                    <div class="w-divider"></div>
-                    <div class="w-block">
-                        <div class="w-label">High / Low</div>
-                        <div class="w-value">${high}°<span class="w-unit">C</span> / ${low}°<span class="w-unit">C</span></div>
-                    </div>
-                    <div class="w-divider"></div>
-                    <div class="w-block">
-                        <div class="w-label">Precip Today</div>
-                        <div class="w-value">${precip}%</div>
-                        <div class="w-condition">${type ?? 'None'}</div>
+                    <div class="w-summary">
+                        <span class="w-label-inline"><i class="mdi mdi-thermometer-high"></i></span> <span class="w-val-inline">${Math.round(high)}°</span>
+                        &nbsp;&nbsp;<span class="w-label-inline"><i class="mdi mdi-thermometer-low"></i></span> <span class="w-val-inline">${Math.round(low)}°</span>
+                        &nbsp;&nbsp;<span class="w-label-inline"><i class="mdi mdi-water-percent"></i></span> <span class="w-val-inline">${precipPct}%${type ? ' ' + type : ''}</span>
                     </div>
                 `;
-            } catch {
+            } catch (e) {
+                console.error('fetchWeather failed:', e);
                 document.getElementById('weather').innerHTML =
                     '<span class="w-loading">Weather unavailable</span>';
             }
