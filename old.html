@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+            position: relative;
+        }
+
+        #content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4vw 6vw;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 1.5vw;
+        }
+
+        #sonos-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background-size: cover;
+            background-position: center;
+            filter: brightness(0.6);
+            transform: scale(1.1);
+            transition: background-image 0.8s ease-in-out;
+        }
+
+        #clock {
+            font-size: 18vw;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        #date {
+            font-size: 4vw;
+            font-weight: 600;
+            color: #888;
+            margin-top: 1.5vw;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        #weather {
+            display: flex;
+            flex-direction: column;
+            gap: 1vw;
+            margin-top: 4vw;
+            align-items: center;
+        }
+
+        .w-main {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1.5vw;
+        }
+
+        .w-temp {
+            font-size: 12vw;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .w-condition {
+            font-size: 5vw;
+            font-weight: 600;
+            color: #ddd;
+            letter-spacing: 0.05em;
+        }
+
+        .w-summary {
+            font-size: 4vw;
+            font-weight: 600;
+        }
+
+        .w-label-inline {
+            color: #666;
+        }
+
+        .w-val-inline {
+            color: #fff;
+        }
+
+        .w-loading {
+            font-size: 1.5vw;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div id="sonos-bg"></div>
+    <div id="content">
+        <div id="clock">--:--</div>
+        <div id="date">Loading...</div>
+        <div id="weather"><span class="w-loading">Loading weather…</span></div>
+    </div>
+
+    <script>
+        const PW = {
+            temp:      'sensor.pirateweather_temperature',
+            summary:   'sensor.pirateweather_summary',
+            high:      'sensor.pirateweather_daytime_high_temperature_0d',
+            low:       'sensor.pirateweather_overnight_low_temperature_0d',
+            precipPct: 'sensor.pirateweather_precip_probability_0d',
+            precipType:'sensor.pirateweather_precip_0d',
+            icon:      'sensor.pirateweather_icon',
+        };
+
+        const ICON_MDI = {
+            'clear-day':           'mdi-weather-sunny',
+            'clear-night':         'mdi-weather-night',
+            'partly-cloudy-day':   'mdi-weather-partly-cloudy',
+            'partly-cloudy-night': 'mdi-weather-night-partly-cloudy',
+            'cloudy':              'mdi-weather-cloudy',
+            'rain':                'mdi-weather-rainy',
+            'sleet':               'mdi-weather-snowy-rainy',
+            'snow':                'mdi-weather-snowy',
+            'wind':                'mdi-weather-windy',
+            'fog':                 'mdi-weather-fog',
+            'thunderstorm':        'mdi-weather-lightning',
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${h}:${m}`;
+
+            const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const MONTHS = ['January','February','March','April','May','June',
+                            'July','August','September','October','November','December'];
+            document.getElementById('date').textContent =
+                `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}`;
+        }
+
+        async function haState(entity) {
+            const res = await fetch(`/ha/api/states/${entity}`, { signal: AbortSignal.timeout(5000) });
+            return (await res.json()).state;
+        }
+
+        async function fetchWeather() {
+            try {
+                const [temp, condition, high, low, precipPct, precipType, iconCode] = await Promise.all(
+                    Object.values(PW).map(haState)
+                );
+
+                const type = (precipType && precipType !== 'none')
+                    ? precipType.charAt(0).toUpperCase() + precipType.slice(1)
+                    : null;
+                const iconClass = ICON_MDI[iconCode] ?? 'mdi-weather-cloudy';
+
+                document.getElementById('weather').innerHTML = `
+                    <div class="w-main">
+                        <div class="w-temp">${Math.round(temp)}°</div>
+                        <div class="w-condition"><i class="mdi ${iconClass}"></i> ${condition}</div>
+                    </div>
+                    <div class="w-summary">
+                        <span class="w-label-inline"><i class="mdi mdi-thermometer-high"></i></span> <span class="w-val-inline">${Math.round(high)}°</span>
+                        &nbsp;&nbsp;<span class="w-label-inline"><i class="mdi mdi-thermometer-low"></i></span> <span class="w-val-inline">${Math.round(low)}°</span>
+                        &nbsp;&nbsp;<span class="w-label-inline"><i class="mdi mdi-water-percent"></i></span> <span class="w-val-inline">${precipPct}%${type ? ' ' + type : ''}</span>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('fetchWeather failed:', e);
+                document.getElementById('weather').innerHTML =
+                    '<span class="w-loading">Weather unavailable</span>';
+            }
+        }
+
+        const SONOS_ROOMS = [
+            { entity: 'media_player.kitchen_sonos' },
+            { entity: 'media_player.living_room_sonos' },
+            { entity: 'media_player.backyard_sonos' },
+        ];
+
+        async function updateSonosBackground() {
+            for (const room of SONOS_ROOMS) {
+                try {
+                    const res = await fetch(`/ha/api/states/${room.entity}`, {
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    const data = await res.json();
+
+                    // Check if playing and has entity_picture
+                    const state = data.state;
+                    const picture = data.attributes?.entity_picture;
+
+                    if (state === 'playing' && picture) {
+                        const artUrl = picture.startsWith('http') ? picture : `/ha${picture}`;
+                        document.getElementById('sonos-bg').style.backgroundImage = `url('${artUrl}')`;
+                        return;
+                    }
+                } catch {}
+            }
+
+            // No room playing
+            document.getElementById('sonos-bg').style.backgroundImage = 'none';
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+        fetchWeather();
+        setInterval(fetchWeather, 10 * 60 * 1000);
+        updateSonosBackground();
+        setInterval(updateSonosBackground, 5000);
+    </script>
+</body>
+</html>

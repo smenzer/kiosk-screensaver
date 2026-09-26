@@ -12,6 +12,7 @@ The index at `/` lists all pages and links to this repo.
 
 ## Screensaver features
 
+- **Radar map background** — dark Esri basemap centered on home (pulsing dot), with the last ~80 min of [RainViewer](https://www.rainviewer.com/api.html) radar looping; refreshes every 5 minutes. Sonos album art replaces it while playing
 - **Clock** — 24-hour, large and bold
 - **Date** — day of week, month, day
 - **Weather** — current temp (°C), conditions, day's high/low, precipitation chance + type for the rest of the day; from [Open-Meteo](https://open-meteo.com/) (free, no API key); refreshes every 10 minutes
@@ -33,6 +34,8 @@ const LAT = 40.7598;
 const LON = -74.4160;
 const TIMEZONE = 'America/New_York';
 ```
+
+The map has its own `LAT`/`LON`/`MAP_ZOOM` constants in the radar section of the script.
 
 Sonos room priority order (first playing room wins):
 
